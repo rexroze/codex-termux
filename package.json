@@ -1,0 +1,41 @@
+{
+  "name": "codex-termux",
+  "version": "0.1.0",
+  "description": "Install OpenAI Codex CLI natively on Termux (Android) — no proot, no containers. Official static-musl codex binaries with a local DNS proxy + TLS bridge.",
+  "license": "MIT",
+  "author": "John Rex Daves Rosani <rexroze>",
+  "bin": {
+    "codex": "bin/codex",
+    "codex-termux": "install.sh"
+  },
+  "files": [
+    "bin/",
+    "install.sh",
+    "scripts/codex-proxy.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "termux",
+    "codex",
+    "openai",
+    "android",
+    "ai",
+    "coding-agent",
+    "static",
+    "musl",
+    "native",
+    "proot-free"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rexroze/codex-termux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rexroze/codex-termux/issues"
+  },
+  "homepage": "https://github.com/rexroze/codex-termux#readme",
+  "scripts": {
+    "test": "sh -n install.sh && sh -n scripts/test.sh && sh scripts/test.sh"
+  }
+}

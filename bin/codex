@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+#
+# codex-termux — npm bin shim.
+#
+# Makes `codex` work right after `npm install -g codex-termux`: the first
+# invocation runs the real installer (downloads the official codex binary,
+# verifies its sha256, installs node for the DNS proxy, wires up your shell);
+# every later invocation passes straight through to the installed launcher.
+set -eu
+
+BIN_DIR="${CODEX_TERMUX_INSTALL_DIR:-$HOME/bin}"
+LAUNCHER="$BIN_DIR/codex"
+
+if [ ! -x "$LAUNCHER" ]; then
+  # npm installs bins as symlinks — resolve back to the real package dir
+  SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  INSTALLER="$(dirname "$(dirname "$SELF")")/install.sh"
+  if [ ! -f "$INSTALLER" ]; then
+    echo "codex-termux: installer not found at $INSTALLER" >&2
+    exit 1
+  fi
+  echo "codex-termux: first run — installing codex (one-time download)…"
+  sh "$INSTALLER" || exit $?
+fi
+
+exec "$LAUNCHER" "$@"
