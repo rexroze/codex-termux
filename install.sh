@@ -126,8 +126,11 @@ download_binary() {
   trap '[ -n "${tmp:-}" ] && rm -rf "$tmp"' EXIT INT TERM
   url="https://github.com/$CODEX_REPO/releases/download/$VERSION/$BIN_NAME"
   info "downloading $url ..."
-  curl -fsSL -o "$tmp/$BIN_NAME" "$url" || die "download failed: $url"
+  # progress bar instead of -sS so the ~85 MB download doesn't look hung
+  curl -fL --progress-bar -o "$tmp/$BIN_NAME" "$url" || die "download failed: $url"
+  info "verifying sha256 checksum ..."
   verify_checksum "$tmp/$BIN_NAME"
+  info "extracting ..."
   tar -xzf "$tmp/$BIN_NAME" -C "$tmp" || die "extract failed (corrupt download?)"
   # The archive holds a single file named after the asset (minus .tar.gz).
   # Check the fixed name instead of find/glob — a glob like 'codex*' also
