@@ -49,6 +49,21 @@ The launcher starts a tiny local DNS proxy on demand (Android has no
 `/etc/resolv.conf`, which would otherwise break codex's DNS lookups) and
 points codex at Termux's CA bundle for TLS.
 
+### Updating
+
+Updates are **manual by design** — the update check on startup is disabled
+(`check_for_update_on_startup = false` in `~/.codex/config.toml`), so new
+upstream releases don't get pulled automatically. When a new Codex version
+ships, re-run the installer:
+
+```bash
+sh install.sh        # or the curl one-liner again — always fetches latest
+```
+
+Pin a specific version with `sh install.sh -v rust-v0.148.0`. `codex update`
+is intentionally not the supported path (it fetches builds outside this
+verified install).
+
 ### How it works
 
 Codex ships as a fully static musl binary — it runs on Termux directly, no
