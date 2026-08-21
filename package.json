@@ -1,6 +1,6 @@
 {
   "name": "codex-termux",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Install OpenAI Codex CLI natively on Termux (Android) — no proot, no containers. Official static-musl codex binaries with a local DNS proxy + TLS bridge.",
   "license": "MIT",
   "author": "John Rex Daves Rosani <rexroze>",
