@@ -59,6 +59,16 @@ installer.
 
 ## Troubleshooting
 
+### `curl: (22) ... 403` when fetching release metadata
+
+GitHub's API rate limit (60 req/h per unauthenticated IP — shared on mobile
+networks). Installers resolve versions via GitHub's `releases/latest`
+redirect instead, which has no such limit — make sure you're running a
+current `install.sh` (re-download it). If it still 403s, GitHub itself is
+having issues; retry later. Note codex has no published checksum file, so on
+API rate limits the installer skips checksum verification with a warning —
+that's expected and non-fatal.
+
 ### `failed to lookup address information`
 
 That's exactly the DNS failure the proxy fixes. Check the proxy is up:

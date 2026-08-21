@@ -83,9 +83,13 @@ that identify agents by process name work as expected.
 ## What's *not* done
 
 No proot, no containers, no patched binaries, no `LD_PRELOAD` shims, no
-emulation. The codex binary on disk is byte-identical to upstream, and every
-download is verified against the sha256 digest GitHub publishes for the
-release asset. The only extra code in the picture is the 60-line DNS proxy
+emulation. The codex binary on disk is byte-identical to upstream. Version
+resolution uses GitHub's `releases/latest` redirect — deliberately *not*
+`api.github.com`, whose unauthenticated quota (60 req/h per IP) is routinely
+exhausted on shared mobile IPs and made installs fail with 403. Codex
+publishes no checksum file, so the installer fetches GitHub's per-asset
+sha256 digest best-effort (skipped with a warning when the API is
+rate-limited); the download itself always comes from github.com over HTTPS. The only extra code in the picture is the 60-line DNS proxy
 and the launcher.
 
 ## Verification

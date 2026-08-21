@@ -52,8 +52,10 @@ Env:
   CODEX_TERMUX_NO_PATH         1 = don't touch PATH/completion config
   CODEX_TERMUX_PROXY_PORT      DNS proxy port (default: 18080)
 
-Downloads are verified against the sha256 digest GitHub publishes for the
-release asset.
+Version resolution uses GitHub's releases/latest redirect (no api.github.com
+— its unauthenticated rate limit causes 403s on shared mobile IPs). Codex
+publishes no checksum file, so the sha256 digest is fetched best-effort and
+verification is skipped with a warning when unavailable.
 The official codex binary is fully static musl, so it runs on Termux
 directly (no glibc bridge). Two things are needed for it to work here:
   1. DNS: Android has no /etc/resolv.conf (its /etc -> /system/etc), so
@@ -100,21 +102,21 @@ ensure_node() {
 }
 
 resolve_release() {
-  local url meta
   if [ "$VERSION" = "latest" ]; then
-    url="https://api.github.com/repos/$CODEX_REPO/releases/latest"
-  else
-    url="https://api.github.com/repos/$CODEX_REPO/releases/tags/$VERSION"
+    # Resolve the latest tag via the releases/latest redirect. This is a
+    # plain github.com web endpoint with no rate limit — api.github.com's
+    # unauthenticated quota (60 req/h per IP) is routinely exhausted on
+    # shared mobile IPs (CGNAT), which made installs fail with 403.
+    local url
+    url="$(curl -fsSL --head -o /dev/null -w '%{url_effective}' \
+      "https://github.com/$CODEX_REPO/releases/latest")" \
+      || die "could not resolve latest codex version (network error)"
+    VERSION="${url##*/}"
   fi
-  meta="$(curl -fsSL "$url")" || die "could not fetch release metadata ($url)"
-  if [ "$VERSION" = "latest" ]; then
-    VERSION="$(printf '%s' "$meta" | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/.*"\(.*\)"/\1/')"
-    [ -n "$VERSION" ] || die "could not resolve version from $url"
-  fi
-  # GitHub publishes a sha256 digest per release asset — grab ours.
-  DIGEST="$(printf '%s' "$meta" | awk -v n="$BIN_NAME" '
-    /"name":/ { gsub(/[",]/, ""); f=($2==n) }
-    f && /"digest":/ { gsub(/[",]/, ""); print $2; exit }')"
+  case "$VERSION" in
+    rust-v*|v*) : ;;
+    *) die "could not resolve version from release redirect" ;;
+  esac
   info "codex version: $VERSION"
 }
 
@@ -127,19 +129,28 @@ download_binary() {
   curl -fsSL -o "$tmp/$BIN_NAME" "$url" || die "download failed: $url"
   verify_checksum "$tmp/$BIN_NAME"
   tar -xzf "$tmp/$BIN_NAME" -C "$tmp" || die "extract failed (corrupt download?)"
-  local bin
-  bin="$(find "$tmp" -maxdepth 1 -type f -name 'codex*' | head -1)"
-  [ -n "$bin" ] || die "archive did not contain a codex binary"
-  mv "$bin" "$INSTALL_DIR/codex-runtime/codex"
+  # The archive holds a single file named after the asset (minus .tar.gz).
+  # Check the fixed name instead of find/glob — a glob like 'codex*' also
+  # matches the tarball itself and would install gzip bytes (magic 1F8B).
+  local extracted="$tmp/${BIN_NAME%.tar.gz}"
+  [ -f "$extracted" ] || die "archive did not contain the codex binary"
+  mv "$extracted" "$INSTALL_DIR/codex-runtime/codex"
   chmod 755 "$INSTALL_DIR/codex-runtime/codex"
   rm -f "$tmp/$BIN_NAME"
 }
 
-# Verify the tarball against the sha256 digest GitHub publishes for the
-# release asset (fetched by resolve_release).
+# Best-effort integrity check. Codex publishes no SHASUMS256.txt; GitHub's
+# per-asset sha256 digest is only available via api.github.com, whose
+# unauthenticated quota (60 req/h per IP) is often exhausted on shared
+# mobile IPs — so failing to fetch it is non-fatal (warn, don't die). The
+# download itself always comes from github.com over HTTPS.
 verify_checksum() {  # $1 = tarball path
-  [ -n "${DIGEST:-}" ] || { warn "no sha256 digest published for this release; skipping checksum check"; return 0; }
   local hex
+  DIGEST="$(curl -fsSL "https://api.github.com/repos/$CODEX_REPO/releases/tags/$VERSION" 2>/dev/null \
+    | awk -v n="$BIN_NAME" '
+      /"name":/ { gsub(/[",]/, ""); f=($2==n) }
+      f && /"digest":/ { gsub(/[",]/, ""); print $2; exit }')" || DIGEST=""
+  [ -n "$DIGEST" ] || { warn "could not fetch a published checksum (API rate limit?) — skipping verification"; return 0; }
   hex="${DIGEST#sha256:}"
   case "$hex" in
     ""|*[!0-9a-fA-F]*) warn "unexpected digest format ($DIGEST); skipping checksum check"; return 0 ;;
